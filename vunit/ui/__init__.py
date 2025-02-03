@@ -1014,11 +1014,11 @@ other preprocessors. Lowest value first. The order between preprocessors with th
         """
         self._builtins.add("random")
 
-    def add_verification_components(self):
+    def add_verification_components(self, memory_model="linear"):
         """
         Add verification component library
         """
-        self._builtins.add("verification_components")
+        self._builtins.add("verification_components", args={"memory_model": memory_model})
 
     def add_osvvm(self):
         """

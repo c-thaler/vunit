@@ -121,13 +121,15 @@ class Builtins(object):
 
         self._add_files(VHDL_PATH / "com" / "src" / "*.vhd")
 
-    def _add_verification_components(self):
+    def _add_verification_components(self, memory_model):
         """
         Add verification component library
         """
         if not self._vhdl_standard >= VHDL.STD_2008:
             raise RuntimeError("Verification component library only supports vhdl 2008 and later")
         self._add_files(VHDL_PATH / "verification_components" / "src" / "*.vhd")
+        self._vunit_lib.add_source_file(VHDL_PATH / "verification_components" / "src" / "memory_models" /
+                                        f"memory_pkg-body-{memory_model}.vhd")
 
     def _add_library_if_not_exist(self, library_name, message):
         """
