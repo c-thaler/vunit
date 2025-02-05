@@ -130,6 +130,8 @@ class Builtins(object):
         self._add_files(VHDL_PATH / "verification_components" / "src" / "*.vhd")
         self._vunit_lib.add_source_file(VHDL_PATH / "verification_components" / "src" / "memory_models" /
                                         f"memory_pkg-body-{memory_model}.vhd")
+        self._vunit_lib.add_source_file(VHDL_PATH / "verification_components" / "src" / "memory_models" /
+                                        f"memory_model_pkg-{memory_model}.vhd")
 
     def _add_library_if_not_exist(self, library_name, message):
         """

@@ -14,6 +14,7 @@ use work.integer_vector_ptr_pkg.all;
 use work.logger_pkg.all;
 use work.string_ptr_pkg.all;
 use work.types_pkg.byte_t;
+use work.memory_model_pkg.all;
 
 package memory_pkg is
 
@@ -28,13 +29,14 @@ package memory_pkg is
     p_meta : integer_vector_ptr_t;
     p_default_endian : endianness_t;
     p_check_permissions : boolean;
-    p_data : integer_vector_ptr_t;
     p_buffers : integer_vector_ptr_t;
     p_logger : logger_t;
+    p_model : memory_model_t;
   end record;
   constant null_memory : memory_t := (p_logger => null_logger,
                                       p_check_permissions => boolean'low,
                                       p_default_endian => endianness_t'low,
+                                      p_model => null_memory_model,
                                       others => null_ptr);
 
   -- Default memory logger
@@ -158,6 +160,12 @@ package memory_pkg is
   impure function num_bytes(buf : buffer_t) return natural;
   impure function base_address(buf : buffer_t) return natural;
   impure function last_address(buf: buffer_t) return natural;
+
+  impure function insert(memory : memory_t;
+                         address : natural;
+                         num_bytes : natural;
+                         name : string := "";
+                         permissions : permissions_t := read_and_write) return buffer_t;
 
   -- Check that all expected bytes was written with correct value in buffer
   procedure check_expected_was_written(buf : buffer_t);

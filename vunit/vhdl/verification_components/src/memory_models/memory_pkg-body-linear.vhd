@@ -27,9 +27,9 @@ package body memory_pkg is
     return (p_meta => p_meta,
             p_default_endian => endian,
             p_check_permissions => false,
-            p_data => new_integer_vector_ptr(0),
             p_buffers => new_integer_vector_ptr(0),
-            p_logger => logger);
+            p_logger => logger,
+            p_model => new_memory_model);
   end;
 
   procedure clear(memory : memory_t) is
@@ -37,7 +37,7 @@ package body memory_pkg is
     assert memory /= null_memory;
     set(memory.p_meta, num_bytes_idx, 0);
     set(memory.p_meta, num_buffers_idx, 0);
-    reallocate(memory.p_data, 0);
+    reallocate(memory.p_model.data, 0);
     reallocate(memory.p_buffers, 0);
   end procedure;
 
@@ -85,9 +85,9 @@ package body memory_pkg is
     buf.p_num_bytes := num_bytes;
     set(memory.p_meta, num_bytes_idx, last_address(buf)+1);
 
-    if length(memory.p_data) < last_address(buf) + 1 then
+    if length(memory.p_model.data) < last_address(buf) + 1 then
       -- Allocate exponentially more memory to avoid to much copying
-      resize(memory.p_data, 2*last_address(buf) + 1, value => encode((byte => 0, exp => 0, has_exp => false, perm => no_access)));
+      resize(memory.p_model.data, 2*last_address(buf) + 1, value => encode((byte => 0, exp => 0, has_exp => false, perm => no_access)));
     end if;
 
     num_buffers := get(memory.p_meta, num_buffers_idx) + 1;
@@ -104,9 +104,19 @@ package body memory_pkg is
 
     -- Set default access type
     for i in 0 to num_bytes-1 loop
-      set(memory.p_data, buf.p_address + i, encode((byte => 0, exp => 0, has_exp => false, perm => permissions)));
+      set(memory.p_model.data, buf.p_address + i, encode((byte => 0, exp => 0, has_exp => false, perm => permissions)));
     end loop;
     return buf;
+  end function;
+
+  impure function insert(memory : memory_t;
+                         address : natural;
+                         num_bytes : natural;
+                         name : string := "";
+                         permissions : permissions_t := read_and_write) return buffer_t is
+  begin
+    failure(memory.p_logger, "Inserting is not supported in linear memory model");
+    return null_buffer;
   end function;
 
   impure function name(buf : buffer_t) return string is
@@ -152,7 +162,7 @@ package body memory_pkg is
   impure function check_write_data(memory : memory_t;
                                    address : natural;
                                    byte : byte_t) return boolean is
-    constant memory_data : memory_data_t := decode(get(memory.p_data, address));
+    constant memory_data : memory_data_t := decode(get(memory.p_model.data, address));
   begin
     if memory_data.has_exp and byte /= memory_data.exp then
       failure(memory.p_logger, "Writing to " & describe_address(memory, address) &
@@ -176,11 +186,11 @@ package body memory_pkg is
     end function;
 
   begin
-    if length(memory.p_data) = 0 then
+    if length(memory.p_model.data) = 0 then
       failure(memory.p_logger, verb & " empty memory");
       return false;
-    elsif address >= length(memory.p_data) then
-      failure(memory.p_logger, verb & " address " & to_string(address) & " out of range 0 to " & to_string(length(memory.p_data)-1));
+    elsif address >= length(memory.p_model.data) then
+      failure(memory.p_logger, verb & " address " & to_string(address) & " out of range 0 to " & to_string(length(memory.p_model.data)-1));
       return false;
     elsif check_permissions and get_permissions(memory, address) = no_access then
       failure(memory.p_logger, verb & " " & describe_address(memory, address) & " without permission (no_access)");
@@ -203,7 +213,7 @@ package body memory_pkg is
     if not check_address(memory, address, reading, check_permissions) then
       return decode(0);
     end if;
-    return decode(get(memory.p_data, address));
+    return decode(get(memory.p_model.data, address));
   end;
 
   impure function num_bytes(memory : memory_t) return natural is
@@ -214,8 +224,8 @@ package body memory_pkg is
   procedure write_byte_unchecked(memory : memory_t; address : natural; byte : byte_t) is
     variable old : memory_data_t;
   begin
-    old := decode(get(memory.p_data, address));
-    set(memory.p_data, address, encode((byte => byte, exp => old.exp, has_exp => old.has_exp, perm => old.perm)));
+    old := decode(get(memory.p_model.data, address));
+    set(memory.p_model.data, address, encode((byte => byte, exp => old.exp, has_exp => old.has_exp, perm => old.perm)));
   end;
 
   procedure write_byte(memory : memory_t; address : natural; byte : byte_t) is
@@ -239,7 +249,7 @@ package body memory_pkg is
     variable memory_data : memory_data_t;
   begin
     for addr in address to address + num_bytes - 1 loop
-      memory_data := decode(get(memory.p_data, addr));
+      memory_data := decode(get(memory.p_model.data, addr));
       if memory_data.has_exp and memory_data.byte /= memory_data.exp then
         failure(memory.p_logger, "The " & describe_address(memory, addr) &
                 " was never written with expected byte " & to_string(memory_data.exp));
@@ -253,7 +263,7 @@ package body memory_pkg is
     variable memory_data : memory_data_t;
   begin
     for addr in address to address + num_bytes - 1 loop
-      memory_data := decode(get(memory.p_data, addr));
+      memory_data := decode(get(memory.p_model.data, addr));
       if memory_data.has_exp and memory_data.byte /= memory_data.exp then
         return false;
       end if;
@@ -293,8 +303,8 @@ package body memory_pkg is
     if not check_address(memory, address, false) then
       return;
     end if;
-    old := decode(get(memory.p_data, address));
-    set(memory.p_data, address, encode((byte => old.byte, exp => old.exp, has_exp => old.has_exp, perm => permissions)));
+    old := decode(get(memory.p_model.data, address));
+    set(memory.p_model.data, address, encode((byte => old.byte, exp => old.exp, has_exp => old.has_exp, perm => permissions)));
   end procedure;
 
   impure function has_expected_byte(memory : memory_t; address : natural) return boolean is
@@ -308,8 +318,8 @@ package body memory_pkg is
     if not check_address(memory, address, false) then
       return;
     end if;
-    old := decode(get(memory.p_data, address));
-    set(memory.p_data, address, encode((byte => old.byte, exp => 0, has_exp => false, perm => old.perm)));
+    old := decode(get(memory.p_model.data, address));
+    set(memory.p_model.data, address, encode((byte => old.byte, exp => 0, has_exp => false, perm => old.perm)));
   end procedure;
 
   procedure set_expected_byte(memory : memory_t; address : natural; expected : byte_t) is
@@ -318,8 +328,8 @@ package body memory_pkg is
     if not check_address(memory, address, false) then
       return;
     end if;
-    old := decode(get(memory.p_data, address));
-    set(memory.p_data, address, encode((byte => old.byte, exp => expected, has_exp => true, perm => old.perm)));
+    old := decode(get(memory.p_model.data, address));
+    set(memory.p_model.data, address, encode((byte => old.byte, exp => expected, has_exp => true, perm => old.perm)));
   end procedure;
 
   impure function get_expected_byte(memory : memory_t; address : natural) return byte_t is
