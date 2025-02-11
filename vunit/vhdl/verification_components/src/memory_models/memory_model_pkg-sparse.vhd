@@ -44,21 +44,31 @@ package body memory_model_pkg is
     type mem_array_t is array (natural range<>) of mem_block_ptr_t;
     type mem_array_ptr_t is access mem_array_t;
 
-    type mem_array_ptr_at is array (0 to 9) of mem_array_ptr_t;
-    variable root : mem_array_ptr_at := (others => null);
+    type mem_array_ptr_at is array (natural range<>) of mem_array_ptr_t;
+    type mem_array_ptr_ptr_at is access mem_array_ptr_at;
+    variable root : mem_array_ptr_ptr_at := null;
+    variable length : integer := 4;
     variable count : integer := 0;
 
     impure function new_array return memory_model_t is
       variable model : memory_model_t;
+      variable next_array : mem_array_ptr_ptr_at;
     begin
-      assert count < 10
-        report "mem_array_list is full"
-        severity failure;
+      if root = null then
+        root := new mem_array_ptr_at(0 to length-1);
+      else
+        if count = length then
+          length := length * 2;
+          next_array := new mem_array_ptr_at(0 to length-1);
+          for i in root.all'range loop
+            next_array.all(i) := root.all(i);
+          end loop;
+          deallocate(root);
+          root := next_array;
+        end if;
+      end if;
       model.ptr := count;
-      root(count) := new mem_array_t(0 to 2**block_addr_width-1);
-      --for i in 0 to 1023 loop
-      --  root(count).all(i) := null;
-      --end loop;
+      root.all(count) := new mem_array_t(0 to 2**block_addr_width-1);
       count := count + 1;
       return model;
     end function;

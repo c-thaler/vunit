@@ -24,6 +24,7 @@ begin
 
   main : process
     variable memory : memory_t;
+    variable memory2 : memory_t;
 
     procedure test_write_integer(word : integer; bytes : integer_vector) is
     begin
@@ -371,6 +372,15 @@ begin
       check_equal(read_word(memory, 7, 5), std_logic_vector'(x"aaffbbccdd"));
       check_equal(read_word(memory, 7, 1), std_logic_vector'(x"aa"));
       check_equal(read_word(memory, 8, 1), std_logic_vector'(x"ff"));
+    elsif run("Test multiple memory instances") then
+      memory := new_memory;
+      buf := allocate(memory, 1);
+      write_byte(memory, base_address(buf), 123);
+      for i in 0 to 4 loop
+        memory2 := new_memory;
+        buf := allocate(memory2, 1);
+      end loop;
+      check_equal(read_byte(memory, base_address(buf)), 123);
     end if;
 
     test_runner_cleanup(runner);
