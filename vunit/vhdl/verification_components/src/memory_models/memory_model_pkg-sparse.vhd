@@ -13,7 +13,7 @@ package memory_model_pkg is
     ptr : memory_model_ptr_t;
   end record;
 
-  constant null_memory_model : memory_model_t := (ptr => -1);
+  constant null_memory_model : memory_model_t := (ptr => memory_model_ptr_t'low);
 
   impure function new_memory_model return memory_model_t;
   procedure write(model : memory_model_t; address : integer; value : integer);
