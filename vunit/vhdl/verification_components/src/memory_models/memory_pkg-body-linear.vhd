@@ -119,6 +119,11 @@ package body memory_pkg is
     return null_buffer;
   end function;
 
+  procedure free(memory : memory_t; address : natural) is
+  begin
+    failure(memory.p_logger, "Freeing is not supported in linear memory model");
+  end procedure;
+
   impure function name(buf : buffer_t) return string is
   begin
     return to_string(buf.p_name);

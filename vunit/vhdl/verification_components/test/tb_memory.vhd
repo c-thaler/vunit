@@ -52,6 +52,7 @@ begin
     end procedure;
 
     variable buf : buffer_t;
+    variable buf2 : buffer_t;
     variable byte : byte_t;
     variable dummy_permissions : permissions_t;
     variable dummy_boolean : boolean;
@@ -381,6 +382,20 @@ begin
         buf := allocate(memory2, 1);
       end loop;
       check_equal(read_byte(memory, base_address(buf)), 123);
+    elsif run("Test free") then
+      memory := new_memory;
+      buf := allocate(memory, 16);
+      buf2 := allocate(memory, 16);
+      buf := allocate(memory, 16);
+      assert num_bytes(memory) = 48;
+      free(memory, base_address(buf2));
+      assert num_bytes(memory) = 32;
+      assert get_permissions(memory, base_address(buf2)) = no_access;
+
+      mock(memory_logger);
+      write_byte(to_vc_interface(memory), base_address(buf2), 132);
+      check_only_log(memory_logger, "Writing to address 16 at unallocated location without permission (no_access)", failure);
+      unmock(memory_logger);
     end if;
 
     test_runner_cleanup(runner);

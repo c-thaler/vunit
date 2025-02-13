@@ -37,7 +37,6 @@ package body memory_pkg is
     assert memory /= null_memory;
     set(memory.p_meta, num_bytes_idx, 0);
     set(memory.p_meta, num_buffers_idx, 0);
-    --reallocate(memory.p_data, 0);
     reallocate(memory.p_buffers, 0);
   end procedure;
 
@@ -84,12 +83,6 @@ package body memory_pkg is
     buf.p_address := buf.p_address + ((-buf.p_address) mod alignment);
     buf.p_num_bytes := num_bytes;
     set(memory.p_meta, num_bytes_idx, last_address(buf)+1);
-
-    -- todo: fix? remove?
-    --if length(memory.p_data) < last_address(buf) + 1 then
-    --  -- Allocate exponentially more memory to avoid to much copying
-    --  resize(memory.p_data, 2*last_address(buf) + 1, value => encode((byte => 0, exp => 0, has_exp => false, perm => no_access)));
-    --end if;
 
     num_buffers := get(memory.p_meta, num_buffers_idx) + 1;
 
@@ -147,6 +140,28 @@ package body memory_pkg is
     return buf;
   end function;
 
+  procedure free(memory : memory_t; address : natural) is
+    variable buf_addr : natural;
+    variable num_bytes : natural;
+    variable total_num_bytes : natural;
+  begin
+    for i in 0 to get(memory.p_meta, num_buffers_idx)-1 loop
+      buf_addr := get(memory.p_buffers, 3*i+1);
+      if address = buf_addr then
+        set(memory.p_buffers, 3*i+1, -1);
+        num_bytes := get(memory.p_buffers, 3*i+2);
+        for i in 0 to num_bytes-1 loop
+          write(memory.p_model, buf_addr + i, encode((byte => 0, exp => 0, has_exp => false, perm => no_access)));
+        end loop;
+        total_num_bytes := get(memory.p_meta, num_bytes_idx);
+        set(memory.p_meta, num_bytes_idx, total_num_bytes - num_bytes);
+        return;
+      end if;
+    end loop;
+
+    failure(memory.p_logger, "Freeing unallocated memory at address " & to_string(address));
+  end procedure;
+
   impure function name(buf : buffer_t) return string is
   begin
     return to_string(buf.p_name);
@@ -167,11 +182,19 @@ package body memory_pkg is
     return buf.p_num_bytes;
   end function;
 
+  impure function is_buffer_valid(memory : memory_t; buf_idx : natural) return boolean is
+  begin
+    return get(memory.p_buffers, 3*buf_idx+1) /= -1;
+  end function;
+
   impure function address_to_allocation(memory : memory_t; address : natural) return buffer_t is
     variable buf : buffer_t;
   begin
     -- @TODO use bisection for speedup
     for i in 0 to get(memory.p_meta, num_buffers_idx)-1 loop
+      if not is_buffer_valid(memory, i) then
+        next;
+      end if;
       buf.p_address := get(memory.p_buffers, 3*i+1);
 
       if address >= buf.p_address then
@@ -214,7 +237,7 @@ package body memory_pkg is
     end function;
 
   begin
-    -- todo: fix?
+    -- todo: how to implement this?
     --elsif address >= length(memory.p_data) then
     --  failure(memory.p_logger, verb & " address " & to_string(address) & " out of range 0 to " & to_string(length(memory.p_data)-1));
     --  return false;

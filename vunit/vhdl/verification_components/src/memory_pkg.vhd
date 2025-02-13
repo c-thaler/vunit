@@ -167,6 +167,8 @@ package memory_pkg is
                          name : string := "";
                          permissions : permissions_t := read_and_write) return buffer_t;
 
+  procedure free(memory : memory_t; address : natural);
+
   -- Check that all expected bytes was written with correct value in buffer
   procedure check_expected_was_written(buf : buffer_t);
 
