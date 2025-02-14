@@ -103,6 +103,28 @@ package body memory_pkg is
     return buf;
   end function;
 
+  impure function is_buffer_valid(memory : memory_t; buf_idx : natural) return boolean is
+  begin
+    return get(memory.p_buffers, 3*buf_idx+1) /= -1;
+  end function;
+
+  impure function is_overlapping(memory : memory_t;
+                                 buf : buffer_t) return boolean is
+    variable buf_addr, num_bytes : natural;
+  begin
+    for i in 0 to get(memory.p_meta, num_buffers_idx)-1 loop
+      if not is_buffer_valid(memory, i) then
+        next;
+      end if;
+      buf_addr := get(memory.p_buffers, 3*i+1);
+      num_bytes := get(memory.p_buffers, 3*i+2);
+      if base_address(buf) >= buf_addr and base_address(buf) < buf_addr + num_bytes then
+        return true;
+      end if;
+    end loop;
+    return false;
+  end function;
+
   impure function insert(memory : memory_t;
                          address : natural;
                          num_bytes : natural;
@@ -116,6 +138,12 @@ package body memory_pkg is
     buf.p_name := new_string_ptr(name);
     buf.p_address := address;
     buf.p_num_bytes := num_bytes;
+
+    if is_overlapping(memory, buf) then
+      failure(memory.p_logger, "Overlapping memory allocation at address " & to_string(address));
+      return null_buffer;
+    end if;
+
     total_bytes := get(memory.p_meta, num_bytes_idx);
     if last_address(buf) > total_bytes then
       set(memory.p_meta, num_bytes_idx, last_address(buf)+1);
@@ -180,11 +208,6 @@ package body memory_pkg is
   impure function num_bytes(buf : buffer_t) return natural is
   begin
     return buf.p_num_bytes;
-  end function;
-
-  impure function is_buffer_valid(memory : memory_t; buf_idx : natural) return boolean is
-  begin
-    return get(memory.p_buffers, 3*buf_idx+1) /= -1;
   end function;
 
   impure function address_to_allocation(memory : memory_t; address : natural) return buffer_t is

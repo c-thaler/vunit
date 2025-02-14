@@ -396,6 +396,14 @@ begin
       write_byte(to_vc_interface(memory), base_address(buf2), 132);
       check_only_log(memory_logger, "Writing to address 16 at unallocated location without permission (no_access)", failure);
       unmock(memory_logger);
+    elsif run("Test overlapping error") then
+      memory := new_memory;
+      buf := allocate(memory, 16);
+      buf2 := allocate(memory, 16);
+      mock(memory_logger);
+      buf := insert(memory, 20, 16);
+      check_only_log(memory_logger, "Overlapping memory allocation at address 20", failure);
+      unmock(memory_logger);
     end if;
 
     test_runner_cleanup(runner);
