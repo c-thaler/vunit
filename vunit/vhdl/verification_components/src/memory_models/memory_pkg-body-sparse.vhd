@@ -174,6 +174,9 @@ package body memory_pkg is
     variable total_num_bytes : natural;
   begin
     for i in 0 to get(memory.p_meta, num_buffers_idx)-1 loop
+      if not is_buffer_valid(memory, i) then
+        next;
+      end if;
       buf_addr := get(memory.p_buffers, 3*i+1);
       if address = buf_addr then
         set(memory.p_buffers, 3*i+1, -1);
