@@ -404,6 +404,14 @@ begin
       buf := insert(memory, 20, 16);
       check_only_log(memory_logger, "Overlapping memory allocation at address 20", failure);
       unmock(memory_logger);
+    elsif run("Test insert") then
+      memory := new_memory;
+      buf2 := allocate(memory, 16);
+      buf := insert(memory, 64, 16);
+      check_equal(base_address(buf), 64, "Base address");
+      check_equal(last_address(buf), 64+16-1, "Last address");
+      check_equal(num_bytes(buf), 16, "Num bytes");
+      assert get_permissions(memory, base_address(buf)) = read_and_write report "Wrong permissions";
     end if;
 
     test_runner_cleanup(runner);
