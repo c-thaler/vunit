@@ -412,6 +412,13 @@ begin
       check_equal(last_address(buf), 64+16-1, "Last address");
       check_equal(num_bytes(buf), 16, "Num bytes");
       assert get_permissions(memory, base_address(buf)) = read_and_write report "Wrong permissions";
+    elsif run("Test insert high") then
+      memory := new_memory;
+      buf := insert(memory, 251658240, 16, "Testing", read_only); -- 251658240 = 0x0F000000
+      check_equal(base_address(buf), 251658240, "Base address");
+      check_equal(last_address(buf), 251658240+16-1, "Last address");
+      check_equal(name(buf), "Testing", "Name");
+      assert get_permissions(memory, base_address(buf)) = read_only report "Wrong permissions";
     end if;
 
     test_runner_cleanup(runner);
