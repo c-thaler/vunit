@@ -52,6 +52,11 @@ begin
       signals_nxt <= "10";
       wait_for_signal(net, detector_handle, 1, '1');
       check(signals = "10", "signal check");
+      signals_nxt <= "00";
+      wait_for_signal(net, detector_handle, 1, '0');
+      check(signals = "00", "signal check");
+      wait_for_signal(net, detector_handle, 0, '0');
+      check(signals = "00", "signal check");
     end if;
 
     wait for 100 ns;
