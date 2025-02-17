@@ -38,6 +38,7 @@ package body memory_pkg is
     set(memory.p_meta, num_bytes_idx, 0);
     set(memory.p_meta, num_buffers_idx, 0);
     reallocate(memory.p_buffers, 0);
+    clear(memory.p_model);
   end procedure;
 
   impure function evaluate_endian(memory : memory_t; endian : endianness_arg_t) return endianness_t is

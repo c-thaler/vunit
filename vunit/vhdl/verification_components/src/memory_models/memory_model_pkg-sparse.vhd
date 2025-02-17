@@ -19,6 +19,7 @@ package memory_model_pkg is
   procedure write(model : memory_model_t; address : integer; value : integer);
   impure function read(model : memory_model_t; address : integer) return integer;
   impure function is_empty(model : memory_model_t) return boolean;
+  procedure clear(model : memory_model_t);
 end package;
 
 package body memory_model_pkg is
@@ -31,6 +32,7 @@ package body memory_model_pkg is
     impure function read(memory : memory_model_t;
                          address : natural) return integer;
     impure function block_count(memory : memory_model_t) return integer;
+    procedure clear(memory : memory_model_t);
   end protected mem_array_list_t;
   
   type mem_array_list_t is protected body
@@ -117,6 +119,17 @@ package body memory_model_pkg is
       return bcount;
     end;
 
+    procedure clear(memory : memory_model_t) is
+    variable memptr : mem_array_ptr_t := root(memory.ptr);
+    begin
+      for i in memptr.all'range loop
+        if memptr(i) /= null then
+          deallocate(memptr(i));
+          memptr(i) := null;
+        end if;
+      end loop;
+    end procedure;
+
   end protected body mem_array_list_t;
 
   shared variable mem_array_list : mem_array_list_t;
@@ -140,4 +153,9 @@ package body memory_model_pkg is
   begin
     return mem_array_list.block_count(model) = 0;
   end function;
+
+  procedure clear(model : memory_model_t) is
+  begin
+    mem_array_list.clear(model);
+  end procedure;
 end package body;
