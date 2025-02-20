@@ -36,8 +36,10 @@ package signal_detector_pkg is
   function get_logger(handle : signal_detector_t) return logger_t;
 
   procedure wait_for_signal(signal net : inout network_t; handle : signal_detector_t; index : integer; level : std_logic);
+  procedure wait_for_clock(signal net : inout network_t; handle : signal_detector_t; cycles : integer := 1);
 
   constant wait_for_msg : msg_type_t := new_msg_type("wait for irq");
+  constant wait_for_clock_msg : msg_type_t := new_msg_type("wait for clock");
 end package;
 
 package body signal_detector_pkg is
@@ -95,6 +97,15 @@ package body signal_detector_pkg is
     request_msg := new_msg(wait_for_msg);
     push_std_ulogic(request_msg, level);
     push_integer(request_msg, index);
+    request(net, handle.p_actor, request_msg, reply_msg);
+    delete(reply_msg);
+  end procedure;
+
+  procedure wait_for_clock(signal net : inout network_t; handle : signal_detector_t; cycles : integer := 1) is
+    variable request_msg, reply_msg : msg_t;
+  begin
+    request_msg := new_msg(wait_for_clock_msg);
+    push_integer(request_msg, cycles);
     request(net, handle.p_actor, request_msg, reply_msg);
     delete(reply_msg);
   end procedure;

@@ -49,6 +49,7 @@ begin
   PROC_MAIN: process
     variable request_msg, reply_msg : msg_t;
     variable signals_mask : std_logic_vector(signals'range);
+    variable cycles : integer;
     variable msg_type : msg_type_t;
   begin
     DISPATCH_LOOP : loop
@@ -58,7 +59,16 @@ begin
       if msg_type = wait_for_msg then
         signals_mask := (others => '0');
         signals_mask(pop_integer(request_msg)) := pop_std_ulogic(request_msg);
+	debug(detector_handle.p_logger, "Waiting for signal " & to_string(signals_mask));
         wait until rising_edge(clk) and signals = signals_mask;
+        reply_msg := new_msg;
+        reply(net, request_msg, reply_msg);
+      elsif msg_type = wait_for_clock_msg then
+        cycles := pop_integer(request_msg);
+	debug(detector_handle.p_logger, "Waiting for " & integer'image(cycles) & " cycle(s)");
+        for i in 1 to cycles loop
+          wait until rising_edge(clk);
+        end loop;
         reply_msg := new_msg;
         reply(net, request_msg, reply_msg);
       else
